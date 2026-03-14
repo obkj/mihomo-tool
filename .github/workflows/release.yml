@@ -2,6 +2,9 @@ name: Build and Release
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -79,6 +82,7 @@ jobs:
           if [ "${{ matrix.goos }}" = "windows" ]; then
             BINARY_NAME="${BINARY_NAME}.exe"
           fi
+          echo "BINARY_NAME=${BINARY_NAME}" >> $GITHUB_ENV
           
           # Handle MIPS softfloat/hardfloat if needed, but for now standard build
           go build -ldflags="-s -w" -o "$BINARY_NAME" main.go
@@ -86,7 +90,7 @@ jobs:
           # Create a package with static assets
           PACKAGE_NAME="mihomo-tool-${{ matrix.goos }}-${{ matrix.goarch }}"
           mkdir "$PACKAGE_NAME"
-          mv "$BINARY_NAME" "$PACKAGE_NAME/"
+          cp "$BINARY_NAME" "$PACKAGE_NAME/"
           cp index.html LICENSE "$PACKAGE_NAME/"
           cp -r css js "$PACKAGE_NAME/"
           
