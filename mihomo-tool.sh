@@ -119,22 +119,28 @@ do_install() {
 
     log "Detected OS: $OS_TYPE, Architecture: $GOARCH"
 
-    API_URL="https://api.github.com/repos/$REPO/releases/latest"
-
-    # Get latest version
+    # Get latest version by following the redirect, which avoids API rate limits.
     log "Fetching latest version from GitHub..."
-
-    # The `sed -E` command can be unreliable on some systems like Alpine.
-    # Using `cut` is a more robust and portable way to parse the tag name.
-    # We also add a timeout and better error handling.
-    API_RESPONSE=$(curl -sL --connect-timeout 15 "$API_URL")
-    if [ -z "$API_RESPONSE" ]; then
-        error "Failed to fetch latest version (empty response from GitHub API). Please check your network connection to api.github.com or try using the 'proxy-install' command."
+    REDIRECT_URL="https://github.com/$REPO/releases/latest"
+    if [ "$USE_PROXY" = "true" ]; then
+        # The proxy needs to be able to handle the redirect from github.com
+        REDIRECT_URL="https://gh-proxy.org/$REDIRECT_URL"
     fi
 
-    LATEST_TAG=$(echo "$API_RESPONSE" | grep '"tag_name":' | cut -d'"' -f4)
-    if [ -z "$LATEST_TAG" ]; then
-        error "Failed to parse latest version from GitHub API. This might be due to rate-limiting. API Response: $API_RESPONSE"
+    # Get the final URL after redirects
+    LATEST_TAG_URL=$(curl -s -o /dev/null -w "%{url_effective}" "$REDIRECT_URL")
+
+    # Check if we got a URL
+    if [ -z "$LATEST_TAG_URL" ]; then
+        error "Failed to fetch latest version redirect URL. Please check your network connection or try using the 'proxy-install' command."
+    fi
+
+    # Extract the tag from the URL (e.g., .../tag/v1.2.3 -> v1.2.3)
+    LATEST_TAG=$(basename "$LATEST_TAG_URL")
+
+    # Validate the tag
+    if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "latest" ]; then
+        error "Failed to parse latest version from URL: $LATEST_TAG_URL. The redirect might have failed."
     fi
     log "Latest version: $LATEST_TAG"
 
