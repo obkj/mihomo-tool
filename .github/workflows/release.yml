@@ -22,6 +22,40 @@ jobs:
           VERSION=$(TZ='Asia/Shanghai' date +'v%Y%m%d%H%M')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
+  sync-mihomo:
+    runs-on: ubuntu-latest
+    outputs:
+      mihomo_version: ${{ steps.sync.outputs.version }}
+      mihomo_release_url: ${{ steps.sync.outputs.release_url }}
+    steps:
+      - name: Sync mihomo release assets and source
+        id: sync
+        run: |
+          set -eo pipefail
+          mkdir mihomo-assets
+          MIHOMO_RELEASE_INFO=$(curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/repos/MetaCubeX/mihomo/releases/latest)
+          
+          MIHOMO_VERSION=$(echo "$MIHOMO_RELEASE_INFO" | jq -r '.tag_name')
+          MIHOMO_RELEASE_URL=$(echo "$MIHOMO_RELEASE_INFO" | jq -r '.html_url')
+
+          echo "version=${MIHOMO_VERSION}" >> $GITHUB_OUTPUT
+          echo "release_url=${MIHOMO_RELEASE_URL}" >> $GITHUB_OUTPUT
+
+          echo "Syncing mihomo version: ${MIHOMO_VERSION}"
+          # Download binary assets
+          echo "$MIHOMO_RELEASE_INFO" | jq -r '.assets[] | select(.name | startswith("mihomo-")) | .browser_download_url' | xargs -n 1 wget -P mihomo-assets
+          # Download source code with specific names
+          wget -O "mihomo-assets/mihomo-source-${MIHOMO_VERSION}.tar.gz" "https://github.com/MetaCubeX/mihomo/archive/refs/tags/${MIHOMO_VERSION}.tar.gz"
+          wget -O "mihomo-assets/mihomo-source-${MIHOMO_VERSION}.zip" "https://github.com/MetaCubeX/mihomo/archive/refs/tags/${MIHOMO_VERSION}.zip"
+      - name: Upload mihomo assets artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mihomo-assets
+          path: mihomo-assets/
+
   build:
     runs-on: ubuntu-latest
     strategy:
@@ -114,7 +148,7 @@ jobs:
           path: mihomo-tool-*.*
 
   release:
-    needs: [prepare, build]
+    needs: [prepare, build, sync-mihomo]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -131,7 +165,12 @@ jobs:
         with:
           tag_name: ${{ needs.prepare.outputs.version }}
           name: Release ${{ needs.prepare.outputs.version }}
-          files: artifacts/*
+          body: |
+            ## Synced mihomo Assets
+            - **Source:** [MetaCubeX/mihomo@${{ needs.sync-mihomo.outputs.mihomo_version }}](${{ needs.sync-mihomo.outputs.mihomo_release_url }})
+            - This release includes pre-compiled binaries and source code archives from the corresponding mihomo release.
+
+          files: artifacts/**/*
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
