@@ -148,7 +148,6 @@ jobs:
         with:
           path: binaries
           pattern: binary-linux-*
-          merge-multiple: true
 
       - name: Prepare Docker context
         run: |
