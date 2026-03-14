@@ -119,9 +119,14 @@ do_install() {
 
     log "Detected OS: $OS_TYPE, Architecture: $GOARCH"
 
+    API_URL="https://api.github.com/repos/$REPO/releases/latest"
+    if [ "$USE_PROXY" = "true" ]; then
+        API_URL="https://gh-proxy.org/$API_URL"
+    fi
+
     # Get latest version
     log "Fetching latest version from GitHub..."
-    LATEST_TAG=$(curl -s https://api.github.com/repos/$REPO/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    LATEST_TAG=$(curl -sL "$API_URL" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
     if [ -z "$LATEST_TAG" ]; then
         error "Failed to fetch latest version"
     fi
