@@ -30,11 +30,12 @@ COPY --from=builder /mihomo-tool .
 
 # 复制静态资源
 COPY index.html .
+COPY LICENSE .
 COPY css/ ./css/
 COPY js/ ./js/
 
 # 暴露应用程序运行的端口
-# 注意：请将 58888 替换为您的应用实际使用的端口
+# 应用程序在 58888 端口上提供服务
 EXPOSE 58888
 
 # 设置容器的入口点
