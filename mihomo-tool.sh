@@ -35,11 +35,13 @@ fi
 
 # Detect OS
 OS_TYPE="linux"
+OS_FOR_DOWNLOAD="linux" # Asset name for download is 'linux' for all distros
 if [ -f /etc/openwrt_release ]; then
     OS_TYPE="openwrt"
     INSTALL_DIR="/usr/bin"
 elif [ -f /etc/alpine-release ] || grep -q "Alpine" /etc/os-release 2>/dev/null; then
     OS_TYPE="alpine"
+    # Alpine uses linux binaries with gcompat
 fi
 
 check_and_install_deps() {
@@ -126,7 +128,7 @@ do_install() {
     log "Latest version: $LATEST_TAG"
 
     # Download URL
-    DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/mihomo-tool-linux-$GOARCH.tar.gz"
+    DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/mihomo-tool-${OS_FOR_DOWNLOAD}-$GOARCH.tar.gz"
 
     if [ "$USE_PROXY" = "true" ]; then
         DOWNLOAD_URL="https://gh-proxy.org/$DOWNLOAD_URL"
@@ -140,7 +142,7 @@ do_install() {
 
     # Install binary
     mkdir -p "$CONFIG_DIR"
-    BINARY_TEMP_DIR="$TMP_DIR/mihomo-tool-linux-$GOARCH"
+    BINARY_TEMP_DIR="$TMP_DIR/mihomo-tool-${OS_FOR_DOWNLOAD}-$GOARCH"
     cp "$BINARY_TEMP_DIR/mihomo-tool" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/mihomo-tool"
 
