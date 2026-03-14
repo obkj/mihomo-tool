@@ -157,7 +157,14 @@ type Response struct {
 
 func main() {
 	log.SetOutput(io.MultiWriter(os.Stdout, logBuffer))
-	http.Handle("/", http.FileServer(http.Dir(".")))
+
+	// 让程序能够找到自己的静态资源文件 (index.html, css, js)
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Fatalf("无法获取可执行文件路径: %v", err)
+	}
+	http.Handle("/", http.FileServer(http.Dir(filepath.Dir(exePath))))
+
 	http.HandleFunc("/api/config", handleSaveConfig)
 	http.HandleFunc("/api/kernel/install", handleInstallKernel)
 	http.HandleFunc("/api/kernel/status", handleKernelStatus)
