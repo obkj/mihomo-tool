@@ -28,10 +28,10 @@
 
 2.  **运行容器**
 
-    执行以下命令启动容器。默认情况下，这会将容器的 `8080` 端口映射到主机的 `8080` 端口。
+    执行以下命令启动容器。默认情况下，这会将容器的 `58888` 端口映射到主机的 `58888` 端口。
 
     ```bash
-    docker run -d -p 8080:8080 --name mihomo-tool --restart always ghcr.io/obkj/mihomo-tool:latest
+    docker run -d -p 58888:58888 --name mihomo-tool --restart always ghcr.io/obkj/mihomo-tool:latest
     ```
     > **注意**：请确保将 obkj 替换为正确的用户名或组织名。如果需要，您可以自行更改主机端口映射。
 
