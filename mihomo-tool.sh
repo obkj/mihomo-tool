@@ -126,7 +126,9 @@ do_install() {
 
     # Get latest version
     log "Fetching latest version from GitHub..."
-    LATEST_TAG=$(curl -sL "$API_URL" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    # The `sed -E` command can be unreliable on some systems like Alpine.
+    # Using `cut` is a more robust and portable way to parse the tag name.
+    LATEST_TAG=$(curl -sL "$API_URL" | grep '"tag_name":' | cut -d'"' -f4)
     if [ -z "$LATEST_TAG" ]; then
         error "Failed to fetch latest version"
     fi

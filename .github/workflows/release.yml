@@ -2,8 +2,8 @@ name: Build and Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -110,7 +110,7 @@ jobs:
         id: create_version
         run: |
           # Get current time in Beijing (UTC+8)
-          VERSION=$(TZ='Asia/Shanghai' date +'%Y.%m.%d-%H%M')
+          VERSION=$(TZ='Asia/Shanghai' date +'v%Y%m%d%H%M')
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Create Release
