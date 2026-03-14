@@ -122,10 +122,6 @@ do_install() {
     # Get latest version by following the redirect, which avoids API rate limits.
     log "Fetching latest version from GitHub..."
     REDIRECT_URL="https://github.com/$REPO/releases/latest"
-    if [ "$USE_PROXY" = "true" ]; then
-        # The proxy needs to be able to handle the redirect from github.com
-        REDIRECT_URL="https://gh-proxy.org/$REDIRECT_URL"
-    fi
 
     # Get the final URL after redirects
     LATEST_TAG_URL=$(curl -sL -o /dev/null -w "%{url_effective}" "$REDIRECT_URL")
