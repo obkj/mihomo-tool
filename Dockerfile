@@ -34,8 +34,8 @@ COPY css/ ./css/
 COPY js/ ./js/
 
 # 暴露应用程序运行的端口
-# 注意：请将 8080 替换为您的应用实际使用的端口
-EXPOSE 8080
+# 注意：请将 58888 替换为您的应用实际使用的端口
+EXPOSE 58888
 
 # 设置容器的入口点
 ENTRYPOINT ["./mihomo-tool"]
