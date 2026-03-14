@@ -1,8 +1,8 @@
 #!/bin/sh
 
-# Mihomo-Tool Unified Management Script (Simplified Version)
+# Mihomo-Tool Unified Management Script (Smart Proxy Version)
 # Supports: Debian, Ubuntu, CentOS, Arch, OpenWrt, Alpine
-# Usage: ./mihomo-tool.sh [install|proxy-install|uninstall]
+# Usage: ./mihomo-tool.sh [install|uninstall]
 
 set -e
 
@@ -11,6 +11,7 @@ REPO="obkj/mihomo-tool"
 INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="/etc/mihomo-tool"
 SERVICE_NAME="mihomo-tool"
+GH_PROXY="https://gh-proxy.org/"
 
 # Colors
 RED='\033[0;31m'
@@ -28,7 +29,6 @@ fi
 
 # Detect OS
 OS_TYPE="linux"
-OS_FOR_DOWNLOAD="linux"
 if [ -f /etc/openwrt_release ]; then
     OS_TYPE="openwrt"
     INSTALL_DIR="/usr/bin"
@@ -36,18 +36,26 @@ elif [ -f /etc/alpine-release ] || grep -q "Alpine" /etc/os-release 2>/dev/null;
     OS_TYPE="alpine"
 fi
 
+# 智能检测是否需要代理 (通过检测 Cloudflare 连通性)
+check_proxy_needed() {
+    log "Checking network environment..."
+    # 如果 3 秒内无法连接 Google/Cloudflare，则认为在境内，需要代理
+    if ! curl -Is --connect-timeout 3 https://www.google.com > /dev/null 2>&1; then
+        log "International network detected as slow, enabling GitHub Proxy..."
+        USE_PROXY=true
+    else
+        log "Direct connection to GitHub is available."
+        USE_PROXY=false
+    fi
+}
+
 check_and_install_deps() {
-    log "Checking and installing dependencies..."
+    log "Checking dependencies..."
     DEPS="curl tar ca-certificates"
-    
     if command -v apt-get >/dev/null 2>&1; then
         apt-get update && apt-get install -y $DEPS
     elif command -v yum >/dev/null 2>&1; then
         yum install -y $DEPS
-    elif command -v dnf >/dev/null 2>&1; then
-        dnf install -y $DEPS
-    elif command -v pacman >/dev/null 2>&1; then
-        pacman -Sy --noconfirm $DEPS
     elif command -v apk >/dev/null 2>&1; then
         apk add --no-cache $DEPS gcompat
     elif command -v opkg >/dev/null 2>&1; then
@@ -55,74 +63,54 @@ check_and_install_deps() {
     fi
 }
 
-do_uninstall() {
-    log "Stopping and removing service..."
-    if [ "$OS_TYPE" = "openwrt" ]; then
-        /etc/init.d/mihomo-tool stop 2>/dev/null || true
-        /etc/init.d/mihomo-tool disable 2>/dev/null || true
-        rm -f /etc/init.d/mihomo-tool
-    elif [ "$OS_TYPE" = "alpine" ]; then
-        rc-service mihomo-tool stop 2>/dev/null || true
-        rc-update del mihomo-tool default 2>/dev/null || true
-        rm -f /etc/init.d/mihomo-tool
-    else
-        systemctl stop mihomo-tool 2>/dev/null || true
-        systemctl disable mihomo-tool 2>/dev/null || true
-        rm -f /etc/systemd/system/mihomo-tool.service
-        systemctl daemon-reload 2>/dev/null || true
-    fi
-
-    rm -f "$INSTALL_DIR/mihomo-tool"
-    rm -rf "$CONFIG_DIR"
-    log "Mihomo-Tool has been uninstalled."
-}
-
 do_install() {
     check_and_install_deps
+    check_proxy_needed
 
-    # Detect Architecture
+    # 架构检测
     ARCH=$(uname -m)
     case $ARCH in
         x86_64) GOARCH="amd64" ;;
         aarch64) GOARCH="arm64" ;;
         armv7*) GOARCH="arm" ;;
         i386|i686) GOARCH="386" ;;
-        mips64) GOARCH="mips64" ;;
-        mips64el) GOARCH="mips64le" ;;
-        mips) GOARCH="mips" ;;
-        mipsel) GOARCH="mipsle" ;;
         *) error "Unsupported architecture: $ARCH" ;;
     esac
 
-    # Get latest version via GitHub API
-    log "Fetching latest version from GitHub API..."
+    # 获取最新版本 (直连 GitHub API)
+    log "Fetching latest version..."
     LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    
-    if [ -z "$LATEST_TAG" ]; then
-        error "Failed to fetch version. Check network or API limits."
-    fi
-    log "Latest version: $LATEST_TAG"
+    [ -z "$LATEST_TAG" ] && error "Failed to fetch version from GitHub API."
 
-    # Download URL
-    DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/mihomo-tool-$OS_FOR_DOWNLOAD-$GOARCH.tar.gz"
-    if [ "$USE_PROXY" = "true" ]; then
-        DOWNLOAD_URL="https://gh-proxy.org/$DOWNLOAD_URL"
+    # 拼接下载地址
+    BASE_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/mihomo-tool-linux-$GOARCH.tar.gz"
+    if [ "$USE_PROXY" = true ]; then
+        DOWNLOAD_URL="${GH_PROXY}${BASE_URL}"
+    else
+        DOWNLOAD_URL="${BASE_URL}"
     fi
 
-    log "Downloading from $DOWNLOAD_URL ..."
+    log "Downloading from: $DOWNLOAD_URL"
     TMP_DIR=$(mktemp -d)
     curl -L "$DOWNLOAD_URL" | tar -xz -C "$TMP_DIR"
 
-    # Install binary and assets
+    # 安装文件
     mkdir -p "$CONFIG_DIR"
-    BINARY_SOURCE_DIR="$TMP_DIR/mihomo-tool-$OS_FOR_DOWNLOAD-$GOARCH"
-    cp "$BINARY_SOURCE_DIR/mihomo-tool" "$INSTALL_DIR/"
+    BIN_DIR="$TMP_DIR/mihomo-tool-linux-$GOARCH"
+    cp "$BIN_DIR/mihomo-tool" "$INSTALL_DIR/"
     chmod +x "$INSTALL_DIR/mihomo-tool"
     
-    # Only copy web assets if they don't exist
-    [ ! -f "$CONFIG_DIR/index.html" ] && cp -r "$BINARY_SOURCE_DIR"/* "$CONFIG_DIR/" || true
+    # 初始化配置/网页文件 (如果不存在)
+    [ ! -f "$CONFIG_DIR/index.html" ] && cp -r "$BIN_DIR"/* "$CONFIG_DIR/" || true
 
-    # Service Configuration
+    # 写入服务配置 (此处根据 OS_TYPE 自动选择 systemd/init.d/openrc)
+    setup_service
+
+    log "Installation successful! Access WebUI at http://$(ip route get 1 | awk '{print $7;exit}'):58888"
+    rm -rf "$TMP_DIR"
+}
+
+setup_service() {
     if [ "$OS_TYPE" = "openwrt" ]; then
         cat <<EOF > /etc/init.d/mihomo-tool
 #!/bin/sh /etc/rc.common
@@ -141,40 +129,39 @@ EOF
     elif [ "$OS_TYPE" = "alpine" ]; then
         cat <<EOF > /etc/init.d/mihomo-tool
 #!/sbin/openrc-run
-description="Mihomo-Tool"
 command="$INSTALL_DIR/mihomo-tool"
 command_background="yes"
 directory="$CONFIG_DIR"
 pidfile="/run/mihomo-tool.pid"
-depend() { need net; }
 EOF
         chmod +x /etc/init.d/mihomo-tool
         rc-update add mihomo-tool default && rc-service mihomo-tool start
     else
         cat <<EOF > /etc/systemd/system/mihomo-tool.service
 [Unit]
-Description=Mihomo-Tool Service
+Description=Mihomo-Tool
 After=network.target
 [Service]
-Type=simple
 WorkingDirectory=$CONFIG_DIR
 ExecStart=$INSTALL_DIR/mihomo-tool
 Restart=always
 [Install]
 WantedBy=multi-user.target
 EOF
-        systemctl daemon-reload
-        systemctl enable mihomo-tool --now
+        systemctl daemon-reload && systemctl enable mihomo-tool --now
     fi
+}
 
-    log "Done! Web UI: http://<IP>:58888"
-    rm -rf "$TMP_DIR"
+do_uninstall() {
+    log "Uninstalling..."
+    systemctl stop mihomo-tool 2>/dev/null || rc-service mihomo-tool stop 2>/dev/null || /etc/init.d/mihomo-tool stop 2>/dev/null || true
+    rm -f "$INSTALL_DIR/mihomo-tool" /etc/systemd/system/mihomo-tool.service /etc/init.d/mihomo-tool
+    log "Uninstalled."
 }
 
 ACTION=${1:-install}
 case $ACTION in
     install) do_install ;;
-    proxy-install) USE_PROXY="true" do_install ;;
     uninstall) do_uninstall ;;
-    *) echo "Usage: $0 [install|proxy-install|uninstall]"; exit 1 ;;
+    *) echo "Usage: $0 [install|uninstall]"; exit 1 ;;
 esac
