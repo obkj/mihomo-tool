@@ -37,7 +37,7 @@ curl -sSL https://raw.githubusercontent.com/obkj/mihomo-tool/main/mihomo-tool.sh
 **代理加速安装 (推荐国内用户使用)**：
 
 ```bash
-curl -sSL https://gh-proxy.org/https://raw.githubusercontent.com/obkj/mihomo-tool/main/mihomo-tool.sh | sudo bash -s proxy-install
+curl -sSL https://gh-proxy.org/https://raw.githubusercontent.com/obkj/mihomo-tool/main/mihomo-tool.sh | sudo bash
 ```
 
 **卸载**：
