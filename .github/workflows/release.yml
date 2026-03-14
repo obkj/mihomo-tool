@@ -96,6 +96,13 @@ jobs:
             tar -czvf "${PACKAGE_NAME}.tar.gz" "$PACKAGE_NAME"
           fi
 
+      - name: Upload Linux Binary Artifact
+        if: matrix.goos == 'linux' && (matrix.goarch == 'amd64' || matrix.goarch == 'arm64' || matrix.goarch == 'arm')
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm }}
+          path: ${{ env.BINARY_NAME }}
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -126,11 +133,35 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-push-docker:
-    needs: prepare
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Download linux binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: binaries
+          pattern: binary-linux-*
+          merge-multiple: true
+
+      - name: Prepare Docker context
+        run: |
+          # 创建 Docker 构建上下文所需的目录结构
+          mkdir -p docker_context/bin/linux/amd64
+          mkdir -p docker_context/bin/linux/arm64
+          mkdir -p docker_context/bin/linux/arm/v7
+          
+          # 移动预编译的二进制文件到指定位置
+          # download-artifact 会将 artifact 内容放在以 artifact 名称命名的子目录中
+          mv binaries/binary-linux-amd64/mihomo-tool docker_context/bin/linux/amd64/
+          mv binaries/binary-linux-arm64/mihomo-tool docker_context/bin/linux/arm64/
+          mv binaries/binary-linux-arm7/mihomo-tool docker_context/bin/linux/arm/v7/
+          
+          # 复制 Dockerfile、静态资源等其他文件到构建上下文
+          cp Dockerfile index.html LICENSE docker_context/
+          cp -r css js docker_context/
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -152,9 +183,11 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./docker_context
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
+          build-args: |
+            TZ=Asia/Shanghai
           tags: |
             ghcr.io/${{ steps.repo_name.outputs.repository }}:${{ needs.prepare.outputs.version }}
             ghcr.io/${{ steps.repo_name.outputs.repository }}:latest
