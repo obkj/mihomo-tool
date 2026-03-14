@@ -93,8 +93,8 @@ type Settings struct {
 }
 
 var (
-	configPath   = "config.yaml"
-	settingsPath = "settings.json"
+	configPath   = "/data/config.yaml"
+	settingsPath = "/data/settings.json"
 	binPath      = "mihomo" // Base name, extension added in init()
 	repo         = "MetaCubeX/mihomo"
 	port         = ":58888"

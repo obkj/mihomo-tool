@@ -27,10 +27,8 @@ COPY js/ ./js/
 EXPOSE 58888
 
 # 创建一个专门用于存放配置和数据的目录，并将其声明为数据卷
-VOLUME /data
-
-# 将工作目录切换到数据目录
-WORKDIR /data
+RUN mkdir -p /app/data
+VOLUME /app/data
 
 # 设置容器的入口点
 # 从 /app 目录执行主程序。这样，程序产生的所有文件（如配置文件）都会被保存在当前工作目录（/data）中
