@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Mihomo-Tool 全系通用精简版
+# Mihomo-Tool 全系通用精简版 - 先下载后解压版
 set -e
 
 REPO="obkj/mihomo-tool"
@@ -13,7 +13,7 @@ error() { echo -e "\033[0;31m[ERROR]\033[0m $1"; exit 1; }
 
 [ "$(id -u)" -ne 0 ] && error "请以 root 权限运行"
 
-# 1. 环境适配：目录与系统类型
+# 1. 环境与系统类型识别
 OS_TYPE="linux"
 if [ -f /etc/openwrt_release ]; then
     OS_TYPE="openwrt"; INSTALL_DIR="/usr/bin"
@@ -22,12 +22,13 @@ elif [ -f /etc/alpine-release ]; then
 fi
 
 # 2. 智能区域检测 (ip.sb)
+# 使用简洁的 API 检查，若为 CN 则自动加代理
 COUNTRY=$(curl -s --connect-timeout 5 https://api.ip.sb/geoip | grep -o '"country_code":"[^"]*"' | cut -d'"' -f4 || echo "Unknown")
 USE_PROXY=false
-[ "$COUNTRY" = "CN" ] && USE_PROXY=true && log "检测到境内 IP，启用加速代理..."
+[ "$COUNTRY" = "CN" ] && USE_PROXY=true && log "检测到境内 IP ($COUNTRY)，启用 GitHub 加速代理..."
 
 # 3. 安装依赖
-log "安装依赖..."
+log "检查并安装必要工具..."
 if command -v apt-get >/dev/null; then apt-get update && apt-get install -y curl tar ca-certificates
 elif command -v yum >/dev/null; then yum install -y curl tar ca-certificates
 elif command -v dnf >/dev/null; then dnf install -y curl tar ca-certificates
@@ -44,24 +45,33 @@ case $ARCH in
     *) error "不支持的架构: $ARCH" ;;
 esac
 
+log "正在获取最新版本信息..."
 LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-[ -z "$LATEST_TAG" ] && error "无法获取版本"
+[ -z "$LATEST_TAG" ] && error "无法获取 GitHub 版本，请检查网络"
 
-# 5. 流式下载并安装
+# 5. 下载到临时文件
 URL="https://github.com/$REPO/releases/download/$LATEST_TAG/mihomo-tool-linux-$GOARCH.tar.gz"
 [ "$USE_PROXY" = true ] && URL="${GH_PROXY}${URL}"
 
-log "正在安装 $LATEST_TAG ($GOARCH)..."
 TMP_DIR=$(mktemp -d)
-curl -sSL "$URL" | tar -xz -C "$TMP_DIR"
+PKG_FILE="$TMP_DIR/mihomo.tar.gz"
+
+log "开始下载: $URL"
+curl -L -o "$PKG_FILE" "$URL"
+
+# 6. 解压并安装
+log "下载完成，正在解压安装..."
+tar -xzf "$PKG_FILE" -C "$TMP_DIR"
 
 mkdir -p "$CONFIG_DIR"
 BIN_SOURCE="$TMP_DIR/mihomo-tool-linux-$GOARCH"
 cp "$BIN_SOURCE/mihomo-tool" "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR/mihomo-tool"
+
+# 如果配置目录没有静态页面，则拷贝
 [ ! -f "$CONFIG_DIR/index.html" ] && cp -r "$BIN_SOURCE"/* "$CONFIG_DIR/" || true
 
-# 6. 服务配置（适配 Systemd / OpenRC / Procd）
+# 7. 服务配置
 if [ "$OS_TYPE" = "openwrt" ]; then
     cat <<EOF > /etc/init.d/mihomo-tool
 #!/bin/sh /etc/rc.common
@@ -80,6 +90,7 @@ EOF
 elif [ "$OS_TYPE" = "alpine" ]; then
     cat <<EOF > /etc/init.d/mihomo-tool
 #!/sbin/openrc-run
+description="mihomo-tool service"
 command="$INSTALL_DIR/mihomo-tool"
 command_background="yes"
 directory="$CONFIG_DIR"
@@ -89,7 +100,6 @@ EOF
     chmod +x /etc/init.d/mihomo-tool
     rc-update add mihomo-tool default && rc-service mihomo-tool restart
 else
-    # 适配通用 Linux (Systemd)
     cat <<EOF > /etc/systemd/system/mihomo-tool.service
 [Unit]
 Description=Mihomo-Tool
@@ -109,5 +119,9 @@ EOF
 fi
 
 log "安装成功！"
-log "Web UI 地址: http://$(ip route get 1 2>/dev/null | awk '{print $7;exit}' || echo "localhost"):58888"
+# 获取本机 IP 并输出
+LOCAL_IP=$(ip route get 1 2>/dev/null | awk '{print $7;exit}' || echo "localhost")
+log "Web UI 地址: http://$LOCAL_IP:58888"
+
+# 8. 清理
 rm -rf "$TMP_DIR"
