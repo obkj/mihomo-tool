@@ -1,0 +1,122 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]  
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin, freebsd]
+        goarch: [amd64, arm64, arm, "386", mips, mipsle, mips64, mips64le]
+        include:
+          - goos: linux
+            goarch: arm
+            goarm: 7
+        exclude:
+          - goos: darwin
+            goarch: arm
+          - goos: darwin
+            goarch: "386"
+          - goos: darwin
+            goarch: mips
+          - goos: darwin
+            goarch: mipsle
+          - goos: darwin
+            goarch: mips64
+          - goos: darwin
+            goarch: mips64le
+          - goos: windows
+            goarch: mips
+          - goos: windows
+            goarch: mipsle
+          - goos: windows
+            goarch: mips64
+          - goos: windows
+            goarch: mips64le
+          - goos: freebsd
+            goarch: mips
+          - goos: freebsd
+            goarch: mipsle
+          - goos: freebsd
+            goarch: mips64
+          - goos: freebsd
+            goarch: mips64le
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+        run: |
+          BINARY_NAME="mihomo-tool"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            BINARY_NAME="${BINARY_NAME}.exe"
+          fi
+          
+          # Handle MIPS softfloat/hardfloat if needed, but for now standard build
+          go build -ldflags="-s -w" -o "$BINARY_NAME" main.go
+          
+          # Create a package with static assets
+          PACKAGE_NAME="mihomo-tool-${{ matrix.goos }}-${{ matrix.goarch }}"
+          mkdir "$PACKAGE_NAME"
+          mv "$BINARY_NAME" "$PACKAGE_NAME/"
+          cp index.html LICENSE "$PACKAGE_NAME/"
+          cp -r css js "$PACKAGE_NAME/"
+          
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip -r "${PACKAGE_NAME}.zip" "$PACKAGE_NAME"
+          else
+            tar -czvf "${PACKAGE_NAME}.tar.gz" "$PACKAGE_NAME"
+          fi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: mihomo-tool-*.*
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create Version
+        id: create_version
+        run: |
+          # Get current time in Beijing (UTC+8)
+          VERSION=$(TZ='Asia/Shanghai' date +'%Y.%m.%d-%H%M')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.create_version.outputs.version }}
+          name: Release ${{ steps.create_version.outputs.version }}
+          files: artifacts/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

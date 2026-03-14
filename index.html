@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mihomo Relay Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="css/style.css?v=2">
+</head>
+
+<body>
+    <div id="toast-container"></div>
+
+    <div class="container">
+        <header>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i data-lucide="shield-check" style="color: var(--primary); width: 28px; height: 28px;"></i>
+                <h1 data-i18n="title">Mihomo Relay Manager</h1>
+                <div id="testStatus" class="test-status-pill" style="display: none;">
+                    <div class="test-status-dot"></div>
+                    <span id="testStatusText">Testing...</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="lang-toggle" onclick="toggleLanguage()" id="langBtn">EN</button>
+            </div>
+        </header>
+
+        <main class="main-layout">
+            <!-- Left Column: Settings -->
+            <section class="settings-col">
+                <div class="card">
+                    <div class="section-title">
+                        <i data-lucide="settings-2"></i>
+                        <span data-i18n="frontConfig">Front Proxy Configuration</span>
+                    </div>
+                    <div class="radio-chips">
+                        <label>
+                            <input type="radio" name="proxySource" value="sub" checked
+                                onchange="handleSourceChange('sub')">
+                            <span data-i18n="subscription">Subscription</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="proxySource" value="manual"
+                                onchange="handleSourceChange('manual')">
+                            <span data-i18n="manual">Manual</span>
+                        </label>
+                    </div>
+
+                    <div id="subSettings">
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <div class="input-group">
+                                <label data-i18n="subUrl">Subscription URL</label>
+                                <textarea id="subUrl" placeholder="https://..."></textarea>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                <div class="input-group">
+                                    <label data-i18n="interval">Interval (min)</label>
+                                    <input type="number" id="subInterval" value="60">
+                                </div>
+                                <div class="input-group">
+                                    <label data-i18n="proxyUrl">Download Mirror</label>
+                                    <input type="text" id="proxyUrl" placeholder="https://...">
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                <input type="checkbox" id="useFallback" style="width: auto;">
+                                <label for="useFallback" data-i18n="useFallback" style="margin: 0; cursor: pointer;">Fallback Mode</label>
+                            </div>
+                            <button class="btn btn-secondary" onclick="triggerUpdate()">
+                                <i data-lucide="refresh-cw"></i>
+                                <span data-i18n="updateNow">Update Now</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="manualSettings" style="display: none;">
+                        <div class="input-group">
+                            <label data-i18n="manualUrl">Manual Proxy Link</label>
+                            <textarea id="manualFrontUrl" placeholder="vmess://..."></textarea>
+                        </div>
+                    </div>
+
+
+                    <div style="margin-top: 16px;">
+                        <button class="btn btn-primary" style="width: 100%;" onclick="saveSettings()">
+                            <i data-lucide="save"></i>
+                            <span data-i18n="saveSettings">Save Settings</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">
+                        <i data-lucide="anchor"></i>
+                        <span data-i18n="landingConfig">Landing Proxy</span>
+                    </div>
+                    <div class="input-group">
+                        <label data-i18n="landingUrl">Target Node Link</label>
+                        <textarea id="landingUrl" placeholder="ss://, vmess://..."></textarea>
+                    </div>
+                    <button class="btn btn-secondary" style="width: 100%;" onclick="saveSettings()">
+                        <i data-lucide="save"></i>
+                        <span data-i18n="saveSettings">Save Settings</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Middle Column: Preview -->
+            <section class="preview-col">
+                <div class="card preview-card">
+                    <div class="section-title">
+                        <i data-lucide="code"></i>
+                        <span data-i18n="configPreview">Config Preview</span>
+                    </div>
+                    <div class="panel-container">
+                        <pre id="output"># Click Preview to Generate</pre>
+                    </div>
+                    <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                        <button class="btn btn-primary" onclick="generateConfig()">
+                            <i data-lucide="eye"></i>
+                            <span data-i18n="preview">Preview</span>
+                        </button>
+                        <button class="btn btn-secondary" style="color: var(--secondary);" onclick="applyToServer()">
+                            <i data-lucide="zap"></i>
+                            <span data-i18n="apply">Apply</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="copyToClipboard()">
+                            <i data-lucide="copy"></i>
+                            <span data-i18n="copy">Copy</span>
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportFile()">
+                            <i data-lucide="download"></i>
+                            <span data-i18n="download">Download</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Status & Logs -->
+            <section class="side-col">
+                <div class="card">
+                    <div class="section-title">
+                        <i data-lucide="activity"></i>
+                        <span data-i18n="statusInfo">Status & Info</span>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item full-width"
+                            style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div class="stat-label" data-i18n="kernelStatus">Kernel Status</div>
+                                <span id="kernelStatusBadge" class="status-badge status-stopped">STOPPED</span>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-secondary" style="padding: 6px 10px; font-size: 0.7rem;"
+                                    onclick="installKernel()" data-i18n="install">Install</button>
+                                <button id="toggleBtn" class="btn btn-primary"
+                                    style="padding: 6px 10px; font-size: 0.7rem; display: none;"
+                                    onclick="toggleService()">Start</button>
+                            </div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label" data-i18n="lastUpdate">Last Update</div>
+                            <div class="stat-value" id="lastUpdate">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label" data-i18n="speed">Speed</div>
+                            <div class="stat-value" id="bestSpeed">-</div>
+                        </div>
+                        <div class="stat-item full-width">
+                            <div class="stat-label" data-i18n="bestNode">Best Node</div>
+                            <div class="stat-value" id="bestProxy"
+                                style="font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                -</div>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" style="width: 100%; margin-top: 16px;" onclick="restartService()">
+                        <i data-lucide="rotate-ccw"></i>
+                        <span data-i18n="restartService">Restart Service</span>
+                    </button>
+                </div>
+                
+                <div class="card" id="nodeListCard" style="display: none;">
+                    <div class="section-title" style="justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="list"></i>
+                            <span data-i18n="nodeList">Node Results</span>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.6rem;" onclick="sortNodes('latency')" data-i18n="sortByLatency">By Latency</button>
+                            <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.6rem;" onclick="sortNodes('speed')" data-i18n="sortBySpeed">By Speed</button>
+                        </div>
+                    </div>
+                    <div class="panel-container" style="max-height: 400px; overflow-y: auto;">
+                        <table class="node-table">
+                            <thead>
+                                <tr>
+                                    <th data-i18n="nodeName">Name</th>
+                                    <th data-i18n="latency">Latency</th>
+                                    <th data-i18n="speed">Speed</th>
+                                </tr>
+                            </thead>
+                            <tbody id="nodeListBody">
+                                <!-- Nodes will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card log-card">
+                    <div class="section-title" style="justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="terminal"></i>
+                            <span data-i18n="logs">Backend Logs</span>
+                        </div>
+                        <label
+                            style="font-size: 0.65rem; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
+                            <input type="checkbox" id="reverseLogsToggle" checked>
+                            <span data-i18n="reverseLogs">Reverse</span>
+                        </label>
+                    </div>
+                    <div class="panel-container">
+                        <pre id="logs">Waiting for logs...</pre>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="js/main.js?v=2"></script>
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>
