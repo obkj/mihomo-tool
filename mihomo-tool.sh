@@ -1,7 +1,5 @@
-#!/bin/bash
-
 # Mihomo-Tool Unified Management Script
-# Supports: Debian, Ubuntu, CentOS, Arch, OpenWrt
+# Supports: Debian, Ubuntu, CentOS, Arch, OpenWrt, Alpine
 # Architectures: amd64, arm64, armv7, 386, mips, mipsle, mips64, mips64le
 # Usage: ./mihomo-tool.sh [install|uninstall]
 
@@ -38,7 +36,32 @@ OS_TYPE="linux"
 if [ -f /etc/openwrt_release ]; then
     OS_TYPE="openwrt"
     INSTALL_DIR="/usr/bin"
+elif [ -f /etc/alpine-release ]; then
+    OS_TYPE="alpine"
 fi
+
+check_and_install_deps() {
+    log "Checking and installing dependencies..."
+    DEPS="curl tar ca-certificates"
+    
+    if command -v apt-get >/dev/null 2>&1; then
+        apt-get update
+        apt-get install -y $DEPS
+    elif command -v yum >/dev/null 2>&1; then
+        yum install -y $DEPS
+    elif command -v dnf >/dev/null 2>&1; then
+        dnf install -y $DEPS
+    elif command -v pacman >/dev/null 2>&1; then
+        pacman -Sy --noconfirm $DEPS
+    elif command -v apk >/dev/null 2>&1; then
+        apk add --no-cache $DEPS
+    elif command -v opkg >/dev/null 2>&1; then
+        opkg update
+        opkg install curl tar ca-bundle
+    else
+        log "Manual dependency check required: please ensure $DEPS are installed."
+    fi
+}
 
 do_uninstall() {
     log "Stopping and disabling service..."
@@ -46,6 +69,12 @@ do_uninstall() {
         if [ -f /etc/init.d/mihomo-tool ]; then
             /etc/init.d/mihomo-tool stop
             /etc/init.d/mihomo-tool disable
+            rm /etc/init.d/mihomo-tool
+        fi
+    elif [ "$OS_TYPE" == "alpine" ]; then
+        if [ -f /etc/init.d/mihomo-tool ]; then
+            rc-service mihomo-tool stop || true
+            rc-update del mihomo-tool default || true
             rm /etc/init.d/mihomo-tool
         fi
     else
@@ -67,6 +96,9 @@ do_uninstall() {
 }
 
 do_install() {
+    # Install dependencies
+    check_and_install_deps
+
     # Detect Architecture
     ARCH=$(uname -m)
     case $ARCH in
@@ -136,6 +168,25 @@ EOF
         chmod +x /etc/init.d/mihomo-tool
         /etc/init.d/mihomo-tool enable
         /etc/init.d/mihomo-tool start
+    elif [ "$OS_TYPE" == "alpine" ]; then
+        log "Configuring OpenRC service for Alpine..."
+        cat <<EOF > /etc/init.d/mihomo-tool
+#!/sbin/openrc-run
+
+description="Mihomo-Tool Service"
+command="$INSTALL_DIR/mihomo-tool"
+command_background="yes"
+directory="$CONFIG_DIR"
+pidfile="/run/mihomo-tool.pid"
+
+depend() {
+    need net
+    after firewall
+}
+EOF
+        chmod +x /etc/init.d/mihomo-tool
+        rc-update add mihomo-tool default
+        rc-service mihomo-tool start
     else
         log "Configuring systemd service..."
         cat <<EOF > /etc/systemd/system/mihomo-tool.service
