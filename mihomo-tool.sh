@@ -119,7 +119,7 @@ do_install() {
 
     log "Detected OS: $OS_TYPE, Architecture: $GOARCH"
 
-    API_URL="https://p.ff11.tk/https://api.github.com/repos/$REPO/releases/latest"
+    API_URL="https://api.github.com/repos/$REPO/releases/latest"
 
     # Get latest version
     log "Fetching latest version from GitHub..."
