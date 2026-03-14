@@ -128,7 +128,7 @@ do_install() {
     fi
 
     # Get the final URL after redirects
-    LATEST_TAG_URL=$(curl -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" -o /dev/null -w "%{url_effective}" "$REDIRECT_URL")
+    LATEST_TAG_URL=$(curl -sL -o /dev/null -w "%{url_effective}" "$REDIRECT_URL")
 
     # Check if we got a URL
     if [ -z "$LATEST_TAG_URL" ]; then
@@ -154,7 +154,7 @@ do_install() {
 
     log "Downloading from $DOWNLOAD_URL ..."
     TMP_DIR=$(mktemp -d)
-    curl -L -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" -o "$TMP_DIR/mihomo-tool.tar.gz" "$DOWNLOAD_URL"
+    curl -L -o "$TMP_DIR/mihomo-tool.tar.gz" "$DOWNLOAD_URL"
     tar -xzf "$TMP_DIR/mihomo-tool.tar.gz" -C "$TMP_DIR"
 
     # Install binary
