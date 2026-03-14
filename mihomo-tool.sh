@@ -126,11 +126,18 @@ do_install() {
 
     # Get latest version
     log "Fetching latest version from GitHub..."
+
     # The `sed -E` command can be unreliable on some systems like Alpine.
     # Using `cut` is a more robust and portable way to parse the tag name.
-    LATEST_TAG=$(curl -sL "$API_URL" | grep '"tag_name":' | cut -d'"' -f4)
+    # We also add a timeout and better error handling.
+    API_RESPONSE=$(curl -sL --connect-timeout 15 "$API_URL")
+    if [ -z "$API_RESPONSE" ]; then
+        error "Failed to fetch latest version (empty response from GitHub API). Please check your network connection to api.github.com or try using the 'proxy-install' command."
+    fi
+
+    LATEST_TAG=$(echo "$API_RESPONSE" | grep '"tag_name":' | cut -d'"' -f4)
     if [ -z "$LATEST_TAG" ]; then
-        error "Failed to fetch latest version"
+        error "Failed to parse latest version from GitHub API. This might be due to rate-limiting. API Response: $API_RESPONSE"
     fi
     log "Latest version: $LATEST_TAG"
 
