@@ -397,7 +397,7 @@ func downloadAndInstall() error {
 	m := settings.DownloadMirror
 	settingsLock.Unlock()
 	if m == "" {
-		m = "https://p.ff11.tk/" // Default if empty
+		m = "https://gh-proxy.org/" // Default if empty
 	}
 
 	fullDownloadURL := m + downloadURL

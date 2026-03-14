@@ -1,73 +1,55 @@
-# Mihomo-Tool
+# mihomo-tool
 
-一个基于 Mihomo 核心的工具，专为简化订阅管理和中转链（Relay Chain）配置而设计。
+一个 mihomo 辅助工具。
 
----
+## 部署说明
 
-## 🌟 核心特性
+您可以选择以下任意一种方式进行部署。
 
-- **🚀 极简订阅管理**：支持从 Clash 订阅链接自动拉取节点信息，并支持设置自定义 User-Agent。
-- **📊 智能压力测试**：
-    - **延迟测试**：自动对所有订阅节点进行毫秒级延迟测试。
-    - **全自动下载测速**：自动选取延迟最低的前 $N$ 个节点（数量可调）进行实际下载速度测试。
-    - **自动优选**：根据测速结果自动选择最优节点作为代理前置。
-- **🔗 一键生成中转链**：
-    - 将本地最优节点与指定的目标落地节点（Landing Proxy）自动组合成中转链。
-    - 利用现代 Mihomo 的 `dialer-proxy` 链式调用技术，实现极致稳定的转发。
-- **🛡️ 容错备份 (Fallback)**：支持 Fallback 模式，当主节点失效时自动切换至备用节点。
-- **🎨 极美 Web UI**：
-    - **毛玻璃效果**：内置简洁现代的 Web 控制面板（默认端口 `58888`）。
-    - **实时监控**：提供实时后端日志输出与测速进度条展示。
-    - **多端适配**：支持响应式布局，无论宽屏还是移动端都有极佳表现。
-- **📦 内核自管理**：
-    - 支持在 UI 中一键下载、更新和安装 Mihomo 内核。
-    - 自动清理占用端口，确保服务稳定启动。
-- **🌍 跨平台支持**：完美支持 Windows、Linux (systemd)、OpenWrt (procd) 和 macOS。
+### 方式一：使用 Docker (推荐)
 
-## 🚀 快速开始
+这是最推荐的部署方式，简单快捷。
 
-### Linux / OpenWrt / Alpine (一键管理)
+1.  **拉取 Docker 镜像**
 
-**普通安装**：
+    我们为每个版本都构建了支持 `linux/amd64`, `linux/arm64`, `linux/arm/v7` 平台的 Docker 镜像，并推送到了 GitHub Container Registry。
 
-```bash
-curl -sSL https://raw.githubusercontent.com/obkj/mihomo-tool/main/mihomo-tool.sh | sudo bash -s install
-```
+    请将下方命令中的 obkj 替换为仓库所有者的 GitHub 用户名或组织名。
 
-**代理加速安装 (推荐国内用户使用)**：
+    *   拉取最新版镜像：
+        ```bash
+        docker pull ghcr.io/obkj/mihomo-tool:latest
+        ```
 
-```bash
-curl -sSL https://gh-proxy.org/https://raw.githubusercontent.com/obkj/mihomo-tool/main/mihomo-tool.sh | sudo bash
-```
+    *   拉取指定版本镜像 (例如 `v202603141233`):
+        ```bash
+        docker pull ghcr.io/obkj/mihomo-tool:v202603141233
+        ```
 
-**卸载**：
+2.  **运行容器**
 
-```bash
-curl -sSL https://raw.githubusercontent.com/obkj/mihomo-tool/main/mihomo-tool.sh | sudo bash -s uninstall
-```
+    执行以下命令启动容器。默认情况下，这会将容器的 `8080` 端口映射到主机的 `8080` 端口。
 
-### Windows
+    ```bash
+    docker run -d -p 8080:8080 --name mihomo-tool --restart always ghcr.io/obkj/mihomo-tool:latest
+    ```
+    > **注意**：请确保将 obkj 替换为正确的用户名或组织名。如果需要，您可以自行更改主机端口映射。
 
-1. 从 [Releases](https://github.com/obkj/mihomo-tool/releases) 页面下载 `mihomo-tool-windows-amd64.zip`。
-2. 解压并双击运行 `mihomo-tool.exe`。
+### 方式二：使用预编译的二进制文件
 
-### 使用说明
+如果您不希望使用 Docker，也可以直接从项目的 Releases 页面 下载我们为您预编译好的程序。
 
-1. **访问控制台**：在浏览器打开 `http://<your-ip>:58888`。
-2. **一键安装内核**：首次使用点击界面上的 "Install" 按钮，程序将自动下载并安装最新的 Mihomo 内核。
-3. **配置与启动**：
-    - 在“设置”页面填入您的订阅链接。
-    - 设置合适的更新间隔（如 60 分钟）。
-    - 填入您的目标落地节点链接（Landing Proxy）。
-    - 点击“更新订阅” -> “保存并应用”。
-4. **开始冲浪**：点击“启动”运行核心。默认 HTTP 代理端口为 `7890`，SOCKS5 为 `7891`。
+我们为 Windows, Linux, macOS, FreeBSD 等主流操作系统和多种 CPU 架构 (如 `amd64`, `arm64`) 都提供了二进制包。
 
-## 🛠️ 技术架构
+1.  前往 Releases 页面。
+2.  找到最新的版本，下载符合您系统和架构的压缩包 (`.zip` 或 `.tar.gz`)。
+3.  解压后即可直接运行其中的可执行文件。
 
-- **后端 (Backend)**: [Go](https://go.dev/) - 负责高性能并发逻辑、进程管理、内核下载及 HTTP API。
-- **前端 (Frontend)**: [Vanilla JS](https://developer.mozilla.org/en-US/docs/Web/JavaScript) + [CSS3](https://developer.mozilla.org/en-US/docs/Web/CSS) - 现代毛玻璃设计风格，无需重度框架，轻量且快速。
-- **核心 (Core)**: [Mihomo (Meta)](https://github.com/MetaCubeX/mihomo) - 提供最底层的网络流量转发支持。
+## 从源码构建
 
-## 📄 开源协议
-
-本项目采用 [MIT License](LICENSE) 开源。欢迎大家提交 Issue 和 PR！
+1.  安装 Go 环境 (需要 `1.21` 或更高版本)。
+2.  克隆此仓库到本地。
+3.  在项目根目录下，执行构建命令：
+    ```bash
+    go build -ldflags="-s -w" -o "mihomo-tool" main.go
+    ```

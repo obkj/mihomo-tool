@@ -63,7 +63,7 @@ async function loadConfig() {
         document.getElementById('subInterval').value = data.interval || 60;
         document.getElementById('manualFrontUrl').value = data.manual_front_proxy || '';
         document.getElementById('landingUrl').value = data.landing_proxy || '';
-        document.getElementById('proxyUrl').value = data.download_mirror || 'https://p.ff11.tk/';
+        document.getElementById('proxyUrl').value = data.download_mirror || 'https://gh-proxy.org/';
         document.getElementById('useFallback').checked = !!data.use_fallback;
 
         document.getElementById('lastUpdate').textContent = data.last_update || '-';
