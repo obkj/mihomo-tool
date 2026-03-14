@@ -26,12 +26,18 @@
 
 ## 🚀 快速开始
 
-### Linux / OpenWrt (一键管理)
+### Linux / OpenWrt / Alpine (一键管理)
 
-在终端运行以下命令进行安装：
+**普通安装**：
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/obkj/mihomo-tool/main/mihomo-tool.sh | sudo bash -s install
+```
+
+**代理加速安装 (推荐国内用户使用)**：
+
+```bash
+curl -sSL https://gh-proxy.org/https://raw.githubusercontent.com/obkj/mihomo-tool/main/mihomo-tool.sh | sudo bash -s proxy-install
 ```
 
 **卸载**：

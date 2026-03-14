@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # Mihomo-Tool Unified Management Script
 # Supports: Debian, Ubuntu, CentOS, Arch, OpenWrt, Alpine
 # Architectures: amd64, arm64, armv7, 386, mips, mipsle, mips64, mips64le
@@ -27,7 +29,7 @@ error() {
 }
 
 # Check if running as root
-if [ "$EUID" -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
     error "Please run as root"
 fi
 
@@ -36,7 +38,7 @@ OS_TYPE="linux"
 if [ -f /etc/openwrt_release ]; then
     OS_TYPE="openwrt"
     INSTALL_DIR="/usr/bin"
-elif [ -f /etc/alpine-release ]; then
+elif [ -f /etc/alpine-release ] || grep -q "Alpine" /etc/os-release 2>/dev/null; then
     OS_TYPE="alpine"
 fi
 
@@ -54,7 +56,7 @@ check_and_install_deps() {
     elif command -v pacman >/dev/null 2>&1; then
         pacman -Sy --noconfirm $DEPS
     elif command -v apk >/dev/null 2>&1; then
-        apk add --no-cache $DEPS
+        apk add --no-cache $DEPS gcompat
     elif command -v opkg >/dev/null 2>&1; then
         opkg update
         opkg install curl tar ca-bundle
@@ -125,6 +127,11 @@ do_install() {
 
     # Download URL
     DOWNLOAD_URL="https://github.com/$REPO/releases/download/$LATEST_TAG/mihomo-tool-linux-$GOARCH.tar.gz"
+
+    if [ "$USE_PROXY" = "true" ]; then
+        DOWNLOAD_URL="https://gh-proxy.org/$DOWNLOAD_URL"
+        log "Using proxy: $DOWNLOAD_URL"
+    fi
 
     log "Downloading from $DOWNLOAD_URL ..."
     TMP_DIR=$(mktemp -d)
@@ -224,11 +231,15 @@ case $ACTION in
     install)
         do_install
         ;;
+    proxy-install)
+        export USE_PROXY="true"
+        do_install
+        ;;
     uninstall)
         do_uninstall
         ;;
     *)
-        echo "Usage: $0 [install|uninstall]"
+        echo "Usage: $0 [install|proxy-install|uninstall]"
         exit 1
         ;;
 esac
