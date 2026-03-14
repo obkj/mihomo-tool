@@ -120,9 +120,6 @@ do_install() {
     log "Detected OS: $OS_TYPE, Architecture: $GOARCH"
 
     API_URL="https://api.github.com/repos/$REPO/releases/latest"
-    if [ "$USE_PROXY" = "true" ]; then
-        API_URL="https://gh-proxy.org/$API_URL"
-    fi
 
     # Get latest version
     log "Fetching latest version from GitHub..."
