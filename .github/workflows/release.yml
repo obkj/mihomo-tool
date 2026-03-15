@@ -121,12 +121,11 @@ jobs:
           # Handle MIPS softfloat/hardfloat if needed, but for now standard build
           go build -ldflags="-s -w" -o "$BINARY_NAME" main.go
           
-          # Create a package with static assets
+          # Create a package with just binary and LICENSE
           PACKAGE_NAME="mihomo-tool-${{ matrix.goos }}-${{ matrix.goarch }}"
           mkdir "$PACKAGE_NAME"
           cp "$BINARY_NAME" "$PACKAGE_NAME/"
-          cp index.html LICENSE "$PACKAGE_NAME/"
-          cp -r css js "$PACKAGE_NAME/"
+          cp LICENSE "$PACKAGE_NAME/"
           
           if [ "${{ matrix.goos }}" = "windows" ]; then
             zip -r "${PACKAGE_NAME}.zip" "$PACKAGE_NAME"
@@ -201,9 +200,8 @@ jobs:
           mv binaries/binary-linux-arm64/mihomo-tool docker_context/bin/linux/arm64/
           mv binaries/binary-linux-arm7/mihomo-tool docker_context/bin/linux/arm/v7/
           
-          # 复制 Dockerfile、静态资源等其他文件到构建上下文
-          cp Dockerfile index.html LICENSE docker_context/
-          cp -r css js docker_context/
+          # 复制 Dockerfile 和 LICENSE 到构建上下文
+          cp Dockerfile LICENSE docker_context/
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3

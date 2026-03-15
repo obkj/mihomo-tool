@@ -15,12 +15,9 @@ ARG TARGETPLATFORM
 # 设置工作目录
 WORKDIR /app
 
-# 从构建上下文中复制应用程序二进制文件和静态资源到 /app 目录
+# 从构建上下文中复制应用程序二进制文件和协议文件到 /app 目录
 COPY bin/${TARGETPLATFORM}/mihomo-tool .
-COPY index.html .
 COPY LICENSE .
-COPY css/ ./css/
-COPY js/ ./js/
 
 # 暴露应用程序运行的端口
 # 应用程序在 58888 端口上提供服务

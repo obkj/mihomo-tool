@@ -605,10 +605,10 @@ func sendResponse(w http.ResponseWriter, status, message string) {
 func loadSettings() {
 	settingsLock.Lock()
 	defer settingsLock.Unlock()
-	data, err := os.ReadFile(settingsPath)
-	if err == nil {
-		json.Unmarshal(data, &settings)
-	}
+	data, _ := os.ReadFile(settingsPath)
+	// Default values before loading
+	settings.UseFallback = true
+	json.Unmarshal(data, &settings)
 	if settings.Interval <= 0 {
 		settings.Interval = 60 // Default 1 hour
 	}
