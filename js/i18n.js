@@ -1,3 +1,5 @@
+import * as api from './api.js';
+
 export const i18n = {
     zh: {
         title: 'Mihomo 自动转发管理',
@@ -108,4 +110,5 @@ export function toggleLanguage() {
     const nextLang = currentLang === 'zh' ? 'en' : 'zh';
     setCurrentLang(nextLang);
     updateUIStrings();
+    api.saveSettings({ language: nextLang }).catch(console.error);
 }

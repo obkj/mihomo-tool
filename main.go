@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"compress/gzip"
 	"context"
+	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -90,6 +91,7 @@ type Settings struct {
 	DownloadMirror   string `json:"download_mirror"`
 	UseFallback      bool   `json:"use_fallback"`
 	SpeedTestCount   int    `json:"speed_test_count"` // number of nodes to speed test, -1 for all
+	Language         string `json:"language,omitempty"`
 }
 
 var (
@@ -123,6 +125,100 @@ func init() {
 	}
 }
 
+var translations = map[string]map[string]string{
+	"en": {
+		"starting_tool":               "Mihomo-Tool starting on http://localhost:58888",
+		"shutting_down":               "Shutting down gracefully...",
+		"tool_stopped":                "Mihomo-Tool stopped.",
+		"port_in_use":                 "Port %s is already in use. Attempting to clear processes...",
+		"killing_process_on_port":     "Found process %s using port %s, killing...",
+		"install_failed":              "Install failed: %v",
+		"downloading_via_mirror":      "Downloading %s (via mirror)...",
+		"install_complete":            "Installation complete.",
+		"restart_skipped":             "Mihomo restart skipped: installation in progress",
+		"restart_failed":              "Failed to restart Mihomo: %v",
+		"firewall_windows":            "Ensuring Windows firewall rules...",
+		"firewall_add_failed":         "Warning: Failed to add Windows firewall rule for port %s (missing admin rights?): %v",
+		"firewall_add_success":        "Added Windows firewall rule for port %s",
+		"sub_updating":                "Updating subscription from %s",
+		"sub_download_failed":         "Failed to download subscription: %v (Check network/proxy). Retry %d/%d",
+		"sub_server_status_error":     "Subscription server returned status: %d. Retry %d/%d",
+		"sub_no_proxies_found":        "No valid proxies found in attempt %d/%d",
+		"test_failed_fallback":        "Proxy test failed or returned no working nodes. Falling back to the first proxy in the subscription list.",
+		"best_proxy_selected":         "Best proxy selected: %s (%s)",
+		"sub_no_proxies_to_fallback":  "No proxies found in subscription to test or fall back to.",
+		"testing_latency":             "Testing %d proxies for latency...",
+		"test_mihomo_start_failed":    "Failed to start test Mihomo: %v",
+		"test_latency_failed_retry":   "Latency test failed for %s, retry %d/%d: %v",
+		"test_no_valid_after_latency": "No valid proxies found after latency test",
+		"testing_speed_for_node":      "Speed testing %s...",
+		"test_proxy_speed_result":     "Proxy %s speed: %s/s",
+		"config_gen_cache_empty":      "Proxy cache empty, triggering subscription update...",
+		"config_gen_success":          "Successfully generated and saved config.yaml",
+		"parsing_sub_data":            "Parsing subscription data (%d bytes)...",
+		"parsing_sub_clash_yaml":      "Detected Clash YAML format, found %d proxies",
+		"parsing_sub_base64":          "Detected Base64 encoded subscription",
+		"parsing_sub_plaintext":       "Attempting plaintext link list parsing",
+		"parsing_sub_link_list_found": "Found %d valid proxies in link list",
+	},
+	"zh": {
+		"starting_tool":               "Mihomo-Tool 正在启动，访问地址 http://localhost:58888",
+		"shutting_down":               "正在平滑关闭...",
+		"tool_stopped":                "Mihomo-Tool 已停止。",
+		"port_in_use":                 "端口 %s 已被占用，正在尝试清理进程...",
+		"killing_process_on_port":     "发现进程 %s 正在使用端口 %s，正在终止...",
+		"install_failed":              "安装失败: %v",
+		"downloading_via_mirror":      "正在通过镜像下载 %s...",
+		"install_complete":            "安装完成。",
+		"restart_skipped":             "Mihomo 重启已跳过：正在安装中",
+		"restart_failed":              "重启 Mihomo 失败: %v",
+		"firewall_windows":            "正在应用 Windows 防火墙规则...",
+		"firewall_add_failed":         "警告: 添加 Windows 防火墙端口 %s 规则失败 (缺少管理员权限?): %v",
+		"firewall_add_success":        "已为端口 %s 添加 Windows 防火墙规则",
+		"sub_updating":                "正在从 %s 更新订阅",
+		"sub_download_failed":         "下载订阅失败: %v (请检查网络/代理)。重试 %d/%d",
+		"sub_server_status_error":     "订阅服务器返回状态: %d。重试 %d/%d",
+		"sub_no_proxies_found":        "在第 %d/%d 次尝试中没有找到有效节点",
+		"test_failed_fallback":        "节点测试失败或无可用节点。正在回退到订阅列表中的第一个节点。",
+		"best_proxy_selected":         "已选择最优节点: %s (%s)",
+		"sub_no_proxies_to_fallback":  "订阅中没有可供测试或回退的节点。",
+		"testing_latency":             "正在测试 %d 个节点的延迟...",
+		"test_mihomo_start_failed":    "启动测试 Mihomo 失败: %v",
+		"test_latency_failed_retry":   "节点 %s 延迟测试失败，重试 %d/%d: %v",
+		"test_no_valid_after_latency": "延迟测试后没有发现有效节点",
+		"testing_speed_for_node":      "正在为 %s 测速...",
+		"test_proxy_speed_result":     "节点 %s 速度: %s/s",
+		"config_gen_cache_empty":      "节点缓存为空，正在触发订阅更新...",
+		"config_gen_success":          "已成功生成并保存 config.yaml",
+		"parsing_sub_data":            "正在解析订阅数据 (%d 字节)...",
+		"parsing_sub_clash_yaml":      "检测到 Clash YAML 格式，发现 %d 个节点",
+		"parsing_sub_base64":          "检测到 Base64 编码的订阅",
+		"parsing_sub_plaintext":       "正在尝试解析纯文本链接列表",
+		"parsing_sub_link_list_found": "在链接列表中发现 %d 个有效节点",
+	},
+}
+
+func logTranslated(key string, args ...interface{}) {
+	settingsLock.Lock()
+	lang := settings.Language
+	if lang != "en" && lang != "zh" {
+		lang = "zh" // Default
+	}
+	settingsLock.Unlock()
+
+	format, ok := translations[lang][key]
+	if !ok {
+		// Fallback to English
+		format, ok = translations["en"][key]
+		if !ok {
+			log.Printf("Missing translation for key: %s", key)
+			return
+		}
+	}
+
+	log.Printf(format, args...)
+}
+
 type Proxy struct {
 	Name              string                 `yaml:"name"`
 	Type              string                 `yaml:"type"`
@@ -150,6 +246,9 @@ type Proxy struct {
 	DialerProxy       string                 `yaml:"dialer-proxy,omitempty"`
 }
 
+//go:embed index.html css js
+var staticFS embed.FS
+
 type Response struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
@@ -158,13 +257,8 @@ type Response struct {
 func main() {
 	log.SetOutput(io.MultiWriter(os.Stdout, logBuffer))
 
-	// 让程序能够找到自己的静态资源文件 (index.html, css, js)
-	exePath, err := os.Executable()
-	if err != nil {
-		log.Fatalf("无法获取可执行文件路径: %v", err)
-	}
-	http.Handle("/", http.FileServer(http.Dir(filepath.Dir(exePath))))
-
+	// Serve static files from embedded filesystem
+	http.Handle("/", http.FileServer(http.FS(staticFS)))
 	http.HandleFunc("/api/config", handleSaveConfig)
 	http.HandleFunc("/api/kernel/install", handleInstallKernel)
 	http.HandleFunc("/api/kernel/status", handleKernelStatus)
@@ -185,7 +279,7 @@ func main() {
 	portsToClear := []string{port, ":7890", ":7891", ":9090"}
 	for _, p := range portsToClear {
 		if isPortInUse(p) {
-			log.Printf("Port %s is already in use. Attempting to clear processes...", p)
+			logTranslated("port_in_use", p)
 			if runtime.GOOS == "windows" {
 				killProcessesByPort(p)
 			}
@@ -204,14 +298,14 @@ func main() {
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		log.Println("Mihomo-Tool starting on http://localhost:58888")
+		logTranslated("starting_tool")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
 
 	<-stop
-	log.Println("Shutting down gracefully...")
+	logTranslated("shutting_down")
 
 	// Stop Mihomo child process
 	stopMihomoInternal()
@@ -224,7 +318,7 @@ func main() {
 		log.Fatalf("Server forced to shutdown: %v", err)
 	}
 
-	log.Println("Mihomo-Tool stopped.")
+	logTranslated("tool_stopped")
 }
 
 func isPortInUse(addr string) bool {
@@ -266,7 +360,7 @@ func handleInstallKernel(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		err := downloadAndInstall()
 		if err != nil {
-			log.Printf("Install failed: %v", err)
+			logTranslated("install_failed", err)
 		}
 	}()
 	sendResponse(w, "success", "Installation started in background")
@@ -408,7 +502,7 @@ func downloadAndInstall() error {
 	}
 
 	fullDownloadURL := m + downloadURL
-	log.Printf("Downloading %s (via mirror)...", fullDownloadURL)
+	logTranslated("downloading_via_mirror", fullDownloadURL)
 	resp, err = http.Get(fullDownloadURL)
 
 	if err != nil {
@@ -461,7 +555,7 @@ func downloadAndInstall() error {
 		return fmt.Errorf("failed to replace binary: %v", err)
 	}
 
-	log.Printf("Installation complete.")
+	logTranslated("install_complete")
 	return nil
 }
 
@@ -518,6 +612,9 @@ func loadSettings() {
 	if settings.Interval <= 0 {
 		settings.Interval = 60 // Default 1 hour
 	}
+	if settings.Language != "en" && settings.Language != "zh" {
+		settings.Language = "zh" // Default to Chinese
+	}
 }
 
 func saveSettings() {
@@ -535,20 +632,41 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodPost {
-		var req Settings
+		var req map[string]interface{}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		settingsLock.Lock()
-		settings.UseSubscription = req.UseSubscription
-		settings.SubscriptionURL = req.SubscriptionURL
-		settings.ManualFrontProxy = req.ManualFrontProxy
-		settings.Interval = req.Interval
-		settings.LandingProxy = req.LandingProxy
-		settings.DownloadMirror = req.DownloadMirror
-		settings.UseFallback = req.UseFallback
-		settings.SpeedTestCount = req.SpeedTestCount
+		if val, ok := req["use_subscription"].(bool); ok {
+			settings.UseSubscription = val
+		}
+		if val, ok := req["subscription_url"].(string); ok {
+			settings.SubscriptionURL = val
+		}
+		if val, ok := req["manual_front_proxy"].(string); ok {
+			settings.ManualFrontProxy = val
+		}
+		if val, ok := req["interval"].(float64); ok { // JSON numbers are float64
+			settings.Interval = int(val)
+		}
+		if val, ok := req["landing_proxy"].(string); ok {
+			settings.LandingProxy = val
+		}
+		if val, ok := req["download_mirror"].(string); ok {
+			settings.DownloadMirror = val
+		}
+		if val, ok := req["use_fallback"].(bool); ok {
+			settings.UseFallback = val
+		}
+		if val, ok := req["speed_test_count"].(float64); ok {
+			settings.SpeedTestCount = int(val)
+		}
+		if val, ok := req["language"].(string); ok {
+			if val == "en" || val == "zh" {
+				settings.Language = val
+			}
+		}
 		settingsLock.Unlock()
 		saveSettings()
 		sendResponse(w, "success", "Settings saved")
@@ -626,7 +744,7 @@ func updateSubscription() {
 		return
 	}
 
-	log.Printf("Updating subscription from %s", urlStr)
+	logTranslated("sub_updating", urlStr)
 
 	var proxies []map[string]interface{}
 	for i := 0; i < maxRetries; i++ {
@@ -643,14 +761,14 @@ func updateSubscription() {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Printf("Failed to download subscription: %v (Check network/proxy). Retry %d/%d", err, i+1, maxRetries)
+			logTranslated("sub_download_failed", err, i+1, maxRetries)
 			time.Sleep(time.Second * 5) // Wait before retrying
 			continue
 		}
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("Subscription server returned status: %d. Retry %d/%d", resp.StatusCode, i+1, maxRetries)
+			logTranslated("sub_server_status_error", resp.StatusCode, i+1, maxRetries)
 			time.Sleep(time.Second * 5) // Wait before retrying
 			continue
 		}
@@ -661,7 +779,7 @@ func updateSubscription() {
 		if len(proxies) > 0 {
 			break // Success
 		} else {
-			log.Printf("No valid proxies found in attempt %d/%d", i+1, maxRetries)
+			logTranslated("sub_no_proxies_found", i+1, maxRetries)
 		}
 		time.Sleep(time.Second * 5) // Wait before retrying
 	}
@@ -670,7 +788,7 @@ func updateSubscription() {
 
 	// If testing fails, fall back to the first proxy in the list to ensure the subscription can still be updated.
 	if bestProxy == "" && len(proxies) > 0 {
-		log.Printf("Proxy test failed or returned no working nodes. Falling back to the first proxy in the subscription list.")
+		logTranslated("test_failed_fallback")
 		bestProxy = proxies[0]["name"].(string)
 		speed = "N/A (fallback)"
 	}
@@ -687,15 +805,15 @@ func updateSubscription() {
 		lastSubscriptionProxies = proxies
 		proxiesLock.Unlock()
 
-		log.Printf("Best proxy selected: %s (%s)", bestProxy, speed)
+		logTranslated("best_proxy_selected", bestProxy, speed)
 		generateConfigAndRestart()
 	} else {
-		log.Printf("No proxies found in subscription to test or fall back to.")
+		logTranslated("sub_no_proxies_to_fallback")
 	}
 }
 
 func testProxies(proxies []map[string]interface{}) (string, string) {
-	log.Printf("Testing %d proxies for latency...", len(proxies))
+	logTranslated("testing_latency", len(proxies))
 
 	const maxTestRetries = 2
 	// Create temp test config with all ports explicitly set to avoid 58888
@@ -733,7 +851,7 @@ func testProxies(proxies []map[string]interface{}) (string, string) {
 	}()
 
 	if err := cmd.Start(); err != nil {
-		log.Printf("Failed to start test Mihomo: %v", err)
+		logTranslated("test_mihomo_start_failed", err)
 		return "", ""
 	}
 	defer cmd.Process.Kill()
@@ -779,7 +897,7 @@ func testProxies(proxies []map[string]interface{}) (string, string) {
 				if err == nil {
 					break // Success
 				}
-				log.Printf("Latency test failed for %s, retry %d/%d: %v", name, i+1, maxTestRetries, err)
+				logTranslated("test_latency_failed_retry", name, i+1, maxTestRetries, err)
 			}
 
 			defer resp.Body.Close()
@@ -814,7 +932,7 @@ func testProxies(proxies []map[string]interface{}) (string, string) {
 	}
 
 	if len(latencies) == 0 {
-		log.Printf("No valid proxies found after latency test")
+		logTranslated("test_no_valid_after_latency")
 		testProgressLock.Lock()
 		testProgress.IsActive = false
 		testProgressLock.Unlock()
@@ -854,7 +972,7 @@ func testProxies(proxies []map[string]interface{}) (string, string) {
 	var speedResults []SpeedResult
 	for i := 0; i < limit; i++ {
 		name := latencies[i].name
-		log.Printf("Speed testing %s...", name)
+		logTranslated("testing_speed_for_node", name)
 
 		testProgressLock.Lock()
 		testProgress.Current = i + 1
@@ -872,7 +990,7 @@ func testProxies(proxies []map[string]interface{}) (string, string) {
 		// Measure speed
 		bytesRead := measureSpeedThroughProxy(10002)
 		sFormatted := formatSpeed(bytesRead / 5)
-		log.Printf("Proxy %s speed: %s/s", name, sFormatted)
+		logTranslated("test_proxy_speed_result", name, sFormatted)
 
 		speedResults = append(speedResults, SpeedResult{name, bytesRead})
 
@@ -980,7 +1098,7 @@ func generateConfigAndRestart() {
 		proxiesLock.Unlock()
 
 		if len(subProxies) == 0 {
-			log.Printf("Proxy cache empty, triggering subscription update...")
+			logTranslated("config_gen_cache_empty")
 			go updateSubscription()
 			return
 		}
@@ -1168,7 +1286,7 @@ func generateConfigAndRestart() {
 
 	out, _ := yaml.Marshal(resConfig)
 	os.WriteFile(configPath, out, 0644)
-	log.Printf("Successfully generated and saved config.yaml")
+	logTranslated("config_gen_success")
 
 	restartMihomo()
 }
@@ -1261,20 +1379,20 @@ func sanitizeProxy(p map[string]interface{}) *Proxy {
 }
 
 func parseSubscription(body []byte) []map[string]interface{} {
-	log.Printf("Parsing subscription data (%d bytes)...", len(body))
+	logTranslated("parsing_sub_data", len(body))
 	// 1. Try Clash YAML
 	var clashConfig struct {
 		Proxies []map[string]interface{} `yaml:"proxies"`
 	}
 	if err := yaml.Unmarshal(body, &clashConfig); err == nil && len(clashConfig.Proxies) > 0 {
-		log.Printf("Detected Clash YAML format, found %d proxies", len(clashConfig.Proxies))
+		logTranslated("parsing_sub_clash_yaml", len(clashConfig.Proxies))
 		return clashConfig.Proxies
 	}
 
 	// 2. Try Base64 encoded link list
 	content := string(body)
 	if decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(content)); err == nil {
-		log.Printf("Detected Base64 encoded subscription")
+		logTranslated("parsing_sub_base64")
 		content = string(decoded)
 	} else {
 		log.Printf("Attempting plaintext link list parsing")
@@ -1296,7 +1414,7 @@ func parseSubscription(body []byte) []map[string]interface{} {
 			proxies = append(proxies, p)
 		}
 	}
-	log.Printf("Found %d valid proxies in link list", len(proxies))
+	logTranslated("parsing_sub_link_list_found", len(proxies))
 	return proxies
 }
 
@@ -1545,7 +1663,7 @@ func restartMihomo() {
 	isInstallingLock.Lock()
 	if isInstalling {
 		isInstallingLock.Unlock()
-		log.Printf("Mihomo restart skipped: installation in progress")
+		logTranslated("restart_skipped")
 		return
 	}
 	isInstallingLock.Unlock()
@@ -1562,7 +1680,7 @@ func restartMihomo() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
-		log.Printf("Failed to restart Mihomo: %v", err)
+		logTranslated("restart_failed", err)
 		return
 	}
 	mihomoCmd = cmd
@@ -1572,7 +1690,7 @@ func ensureFirewallRules() {
 	ports := []string{"58888", "7890", "7891", "9090"}
 
 	if runtime.GOOS == "windows" {
-		log.Println("Ensuring Windows firewall rules...")
+		logTranslated("firewall_windows")
 		for _, port := range ports {
 			ruleName := fmt.Sprintf("Mihomo-Manager-Port-%s", port)
 			checkCmd := exec.Command("netsh", "advfirewall", "firewall", "show", "rule", "name="+ruleName)
@@ -1585,9 +1703,9 @@ func ensureFirewallRules() {
 					"localport="+port,
 				)
 				if err := addCmd.Run(); err != nil {
-					log.Printf("Warning: Failed to add Windows firewall rule for port %s (missing admin rights?): %v", port, err)
+					logTranslated("firewall_add_failed", port, err)
 				} else {
-					log.Printf("Added Windows firewall rule for port %s", port)
+					logTranslated("firewall_add_success", port)
 				}
 			}
 		}
@@ -1647,7 +1765,7 @@ func killProcessesByPort(addr string) {
 					if pid == strconv.Itoa(os.Getpid()) {
 						continue
 					}
-					log.Printf("Found process %s using port %s, killing...", pid, portStr)
+					logTranslated("killing_process_on_port", pid, portStr)
 					exec.Command("taskkill", "/F", "/PID", pid, "/T").Run()
 				}
 			}

@@ -139,6 +139,22 @@
                         </button>
                     </div>
                 </div>
+                <div class="card log-card">
+                    <div class="section-title" style="justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <i data-lucide="terminal"></i>
+                            <span data-i18n="logs">Backend Logs</span>
+                        </div>
+                        <label
+                            style="font-size: 0.65rem; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
+                            <input type="checkbox" id="reverseLogsToggle" checked>
+                            <span data-i18n="reverseLogs">Reverse</span>
+                        </label>
+                    </div>
+                    <div class="panel-container" style="overflow-y: auto;">
+                        <pre id="logs">Waiting for logs...</pre>
+                    </div>
+                </div>
             </section>
 
             <!-- Right Column: Status & Logs -->
@@ -195,7 +211,7 @@
                             <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.6rem;" onclick="sortNodes('speed')" data-i18n="sortBySpeed">By Speed</button>
                         </div>
                     </div>
-                    <div class="panel-container" style="max-height: 400px; overflow-y: auto;">
+                    <div class="panel-container" style="max-height: 250px; overflow-y: auto;">
                         <table class="node-table">
                             <thead>
                                 <tr>
@@ -208,23 +224,6 @@
                                 <!-- Nodes will be injected here -->
                             </tbody>
                         </table>
-                    </div>
-                </div>
-
-                <div class="card log-card">
-                    <div class="section-title" style="justify-content: space-between;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <i data-lucide="terminal"></i>
-                            <span data-i18n="logs">Backend Logs</span>
-                        </div>
-                        <label
-                            style="font-size: 0.65rem; display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
-                            <input type="checkbox" id="reverseLogsToggle" checked>
-                            <span data-i18n="reverseLogs">Reverse</span>
-                        </label>
-                    </div>
-                    <div class="panel-container">
-                        <pre id="logs">Waiting for logs...</pre>
                     </div>
                 </div>
             </section>

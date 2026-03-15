@@ -145,7 +145,8 @@ async function handleSaveSettings() {
         interval: parseInt(document.getElementById('subInterval').value) || 60,
         landing_proxy: document.getElementById('landingUrl').value,
         download_mirror: document.getElementById('proxyUrl').value,
-        use_fallback: document.getElementById('useFallback').checked
+        use_fallback: document.getElementById('useFallback').checked,
+        language: i18n.getCurrentLang()
     };
     try {
         const result = await api.saveSettings(settings);
