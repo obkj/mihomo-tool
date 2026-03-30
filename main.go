@@ -92,6 +92,7 @@ type Settings struct {
 	UseFallback      bool   `json:"use_fallback"`
 	SpeedTestCount   int    `json:"speed_test_count"` // number of nodes to speed test, -1 for all
 	Language         string `json:"language,omitempty"`
+	RemainingTraffic string `json:"remaining_traffic"`
 }
 
 var (
@@ -667,6 +668,9 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 				settings.Language = val
 			}
 		}
+		if val, ok := req["remaining_traffic"].(string); ok {
+			settings.RemainingTraffic = val
+		}
 		settingsLock.Unlock()
 		saveSettings()
 		sendResponse(w, "success", "Settings saved")
@@ -797,6 +801,7 @@ func updateSubscription() {
 		settingsLock.Lock()
 		settings.BestProxyName = bestProxy
 		settings.BestProxySpeed = speed
+		settings.RemainingTraffic = extractTraffic(proxies)
 		settings.LastUpdate = time.Now().Format("2006-01-02 15:04:05")
 		settingsLock.Unlock()
 		saveSettings()
@@ -1416,6 +1421,33 @@ func parseSubscription(body []byte) []map[string]interface{} {
 	}
 	logTranslated("parsing_sub_link_list_found", len(proxies))
 	return proxies
+}
+
+func extractTraffic(proxies []map[string]interface{}) string {
+	keywords := []string{"剩余流量", "剩余", "流量"}
+	for _, p := range proxies {
+		name, ok := p["name"].(string)
+		if !ok {
+			continue
+		}
+		for _, kw := range keywords {
+			if strings.Contains(name, kw) {
+				idx := strings.Index(name, kw)
+				suffix := name[idx+len(kw):]
+				// Trim separators and potential noise
+				suffix = strings.TrimLeft(suffix, "：: \t-|")
+				// Extract until the next separator or end of string
+				endIdx := strings.IndexAny(suffix, " \t|")
+				if endIdx != -1 {
+					return suffix[:endIdx]
+				}
+				if suffix != "" {
+					return suffix
+				}
+			}
+		}
+	}
+	return "-"
 }
 
 func parseProxyURL(link string, name string) map[string]interface{} {

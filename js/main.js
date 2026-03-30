@@ -69,6 +69,7 @@ async function loadConfig() {
         document.getElementById('lastUpdate').textContent = data.last_update || '-';
         document.getElementById('bestProxy').textContent = data.best_proxy_name || '-';
         document.getElementById('bestSpeed').textContent = data.best_proxy_speed || '-';
+        document.getElementById('remainingTraffic').textContent = data.remaining_traffic || '-';
     } catch (e) { }
 }
 
@@ -78,6 +79,7 @@ async function updateStatus() {
         document.getElementById('lastUpdate').textContent = data.last_update || '-';
         document.getElementById('bestProxy').textContent = data.best_proxy_name || '-';
         document.getElementById('bestSpeed').textContent = data.best_proxy_speed || '-';
+        document.getElementById('remainingTraffic').textContent = data.remaining_traffic || '-';
         
         await fetchNodeResults();
     } catch (e) { }
